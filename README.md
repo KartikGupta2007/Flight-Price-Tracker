@@ -1,1 +1,1 @@
-hi
+I have created Flight Price Tracker. If the price of the selected flight fluctuates more than 1% , it notifies through telegram bot if the real-time price is dropped or increased even with prev and new amount and also tell the difference percentage!!!
