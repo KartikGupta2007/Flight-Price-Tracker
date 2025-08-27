@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FFlight Alerts — Custom Routes</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#0f162c; --border:#202b46;
+    --muted:#9aa7bd; --text:#eaf2ff; --accent:#7c9cff;
+    --danger:#ff6b6b; --shadow: 0 10px 30px rgba(0,0,0,.25);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+
+  /* background */
+  body{
+    margin:0; color:var(--text);
+    background:
+      radial-gradient(1200px 700px at 10% -10%, rgba(124,156,255,.12), transparent 60%),
+      radial-gradient(1000px 600px at 110% 10%, rgba(0,209,178,.10), transparent 60%),
+      var(--bg);
+    font: 15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+  }
+  /* top bar */
+  .topbar{position:sticky; top:0; z-index:10; backdrop-filter:saturate(150%) blur(8px);
+    background:linear-gradient(180deg, rgba(16,24,48,.8), rgba(16,24,48,.55));
+    border-bottom:1px solid var(--border); padding:16px 20px;}
+  .title{display:flex; align-items:center; gap:10px; margin:0; font-weight:800}
+  .logo{width:28px; height:28px; border-radius:7px; display:grid; place-items:center;
+    background:linear-gradient(135deg, var(--accent), #8de1ff); box-shadow:var(--shadow)}
+  .logo svg{fill:#0a1022}
+  .subtitle{color:var(--muted); margin-top:6px; font-size:13px}
+
+  /* centre */
+  .container{max-width:1100px; margin:22px auto; padding:0 16px}
+  .panel{background:linear-gradient(180deg, rgba(19,27,51,.85), rgba(16,22,42,.85));
+    border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow);}
+
+  /* tabs */
+  .tabs{display:flex; gap:8px; margin-bottom:12px}
+  .tab{padding:10px 14px; border-radius:10px; border:1px solid var(--border);
+       background:#0e1530; color:#9fb0d1; cursor:pointer}
+  .tab.active{background:linear-gradient(135deg,#243a7a,#1d2d5e); color:#fff; border-color:#3d559b}
+
+  /* form */
+  .toolbar{display:flex; flex-wrap:wrap; gap:10px; padding:14px}
+  .grid{display:grid; gap:14px; margin-top:16px; grid-template-columns:repeat(auto-fit,minmax(480px,1fr)); align-items:start}
+  
+  /* form elements ,IATA uppercase , buttons + variants  */
+  .input{background:#0b1329; color:var(--text); border:1px solid var(--border); border-radius:10px;
+    padding:10px 12px; outline:none}
+  .iata{width:120px; text-transform:uppercase} .date{width:180px}
+  .btn{border:1px solid var(--border); background:#111a34; color:var(--text);
+    padding:9px 12px; border-radius:10px; cursor:pointer}
+  .btn.primary{background:linear-gradient(135deg, #243a7a, #1d2d5e); border-color:#334a8b}
+  .btn.success{background:linear-gradient(135deg, #0f6e62, #0c5a50); border-color:#117e71}
+  .btn.ghost{background:transparent}
+  .btn.danger{background:linear-gradient(135deg, #612626, #4c1d1d); border-color:#7c2b2b; color:#ffc7c7}
+  .btn.small{padding:6px 9px; font-size:13px}
+
+/* Card styling and header area (title + actions). Badge shows selected flights summary. */
+  .card{padding:14px; border-radius:14px}
+  .routeHead{display:flex; justify-content:space-between; align-items:center; gap:10px}
+  .routeTitle{font-weight:800}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .badge{
+    border:1px solid var(--border); color:var(--muted); font-size:11px;
+    padding:3px 8px; border-radius:999px; background:rgba(255,255,255,.03);
+    display:inline-block; vertical-align:middle; margin-left:4px;
+  }
+  .right{display:flex; gap:10px; align-items:center}
+  .switch{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted)}
+
+  /* Flight list area; each row shows airline/flight/duration/price + checkbox. */
+  .flights{margin-top:10px; border-top:1px dashed var(--border); padding-top:12px}
+  .flightRow{display:flex; align-items:center; justify-content:space-between;
+    padding:10px 8px; border:1px solid var(--border); border-radius:12px; margin:8px 0;
+    background:linear-gradient(180deg, rgba(12,19,39,.7), rgba(12,19,39,.45));}
+  .flightLeft{display:flex; flex-direction:column}
+  .price{font-weight:800}
+  .chip{font-size:11px; border:1px solid var(--border); border-radius:8px; padding:2px 6px; margin-left:6px; color:#9fb0d1}
+  .saveRow{display:flex; gap:10px; align-items:center; margin-top:10px}
+
+  /* checkbox switch */
+  .toast{position:fixed; inset:auto 16px 16px auto; z-index:50; min-width:240px; padding:12px 14px; border-radius:12px;
+    background:linear-gradient(135deg, #0f6e62, #0c5a50); border:1px solid #1c9a8b; box-shadow:var(--shadow);
+    color:#eafffb; opacity:0; transform:translateY(8px); transition:.2s ease;}
+  .toast.show{opacity:1; transform:translateY(0)}
+
+  /* Active tracker list styling. */
+  .activeList .item{padding:12px; border:1px solid var(--border); border-radius:12px; margin-bottom:10px}
+  .activeList .sub{margin-top:8px; padding-left:10px; border-left:2px dashed var(--border)}
+</style>
+</head>
+
+<body>
+  <!-- Sticky header with SVG logo and helpful subtitle. -->
+  <div class="topbar">
+    <h1 class="title">
+      <span class="logo" aria-label="Flight Alerts">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M2.5 13.5l7.8-.9 6.2 7.1c.4.5 1.1.5 1.6.1l.7-.6c.5-.4.5-1.1.1-1.6l-6.2-7.1 4.7-5.7c.4-.5.3-1.2-.2-1.6l-.8-.6c-.5-.4-1.2-.3-1.6.2l-4.7 5.7-7.9-1c-.7-.1-1.3.4-1.4 1.1l-.1.9c-.1.7.4 1.3 1.1 1.4z"/>
+        </svg>
+      </span>
+      Flight Alerts — Custom Routes
+    </h1>
+    <div class="subtitle">Pick routes, subscribe route-wide, or choose <b>specific flights</b> for alerts (multiple allowed).</div>
+  </div>
+
+  <!-- Two clickable tabs -->
+  <div class="container">
+    <div class="tabs">
+      <div id="tab-routes" class="tab active">Routes</div>
+      <div id="tab-active" class="tab">Active tracker</div>
+    </div>
+
+    <!-- Add a route (FROM/TO/DATE). msg shows API error text if any. -->
+    <div id="view-routes">
+      <div class="panel toolbar">
+        <input id="from" class="input iata" type="text" placeholder="FROM (IATA)" maxlength="3">
+        <input id="to"   class="input iata" type="text" placeholder="TO (IATA)" maxlength="3">
+        <input id="date" class="input date" type="date">
+        <button id="addBtn" class="btn primary">＋ Add route</button>
+        <span id="msg" class="muted"></span>
+      </div>
+<!-- List of routes added so far. Each card shows route details, subscription toggle, view flights button, delete button. -->
+      <div class="panel toolbar" style="margin-top:12px">
+        <button id="selectAll" class="btn ghost small">Select all</button>
+        <button id="clearAll"  class="btn ghost small">Clear all</button>
+        <button id="saveBtn"   class="btn success">Save route subscriptions</button>
+        <span id="status" class="muted"></span>
+      </div>
+
+      <div id="list" class="grid"></div>
+    </div>
+
+    <!-- ACTIVE VIEW -->
+    <div id="view-active" style="display:none">
+      <div class="panel toolbar">
+        <div class="muted" id="active-status">Loading…</div>
+      </div>
+      <div class="panel card activeList" id="active-list"></div>
+    </div>
+  </div>
+<!-- Active tracker list styling. -->
+<div id="toast" class="toast">Saved.</div>
+
+<!-- JS -->
+<script>
+  // tabs 
+  const tabRoutes = document.getElementById("tab-routes");
+  const tabActive = document.getElementById("tab-active");
+  const viewRoutes = document.getElementById("view-routes");
+  const viewActive = document.getElementById("view-active");
+  function showRoutes(){ tabRoutes.classList.add("active"); tabActive.classList.remove("active"); viewRoutes.style.display="block"; viewActive.style.display="none"; }
+  function showActive(){ tabActive.classList.add("active"); tabRoutes.classList.remove("active"); viewActive.style.display="block"; viewRoutes.style.display="none"; loadActive(); }
+  tabRoutes.onclick = showRoutes; tabActive.onclick = showActive;
+
+  const list = document.getElementById("list");
+  const statusEl = document.getElementById("status");
+  const msgEl = document.getElementById("msg");
+  const toast = document.getElementById("toast");
+
+  function rupee(n){ return (n==null) ? "—" : "₹"+Number(n).toLocaleString("en-IN"); }
+  function keyToId(key){ return key.replaceAll(/[^A-Za-z0-9]/g,"_"); }
+  function showToast(t){ toast.textContent=t; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),1600); }
+  // Fetches your routes + which are subscribed → renders cards.
+  async function loadRoutes(){
+    statusEl.textContent = "Loading…";
+    const r = await fetch("/api/routes");
+    const data = await r.json();
+    renderRoutes(data.routes||[]);
+    statusEl.textContent = "Saved route subscriptions.";
+  }
+ // Creates a card per route; computes the badge text from previously saved flight picks.
+  function renderRoutes(routes){
+    list.innerHTML = "";
+    routes.forEach(r=>{
+      const id = keyToId(r.key);
+      const card = document.createElement("div");
+      card.className = "panel card";
+
+      const selectedFlights = r.flight_filters || [];
+      const badge = selectedFlights.length
+        ? `<span class="badge">Flight alerts: ${selectedFlights.map(f=>f.flightNo).join(", ")}</span>`
+        : `<span class="badge">No flight filters</span>`;
+// card inner HTML with route details, subscription toggle, view flights button, delete button, and flight list area (initially hidden).
+      card.innerHTML = `
+        <div class="routeHead">
+          <div>
+            <div class="routeTitle">${r.from} → ${r.to}</div>
+            <div class="muted small">${r.date} • Last seen: <b>${rupee(r.last_price)}</b>${badge}</div>
+          </div>
+          <div class="right">
+            <label class="switch">
+              <input type="checkbox" id="cb_${id}" ${r.subscribed?"checked":""} data-key="${r.key}">
+              <span>Route alert</span>
+            </label>
+            <button class="btn small viewBtn" data-from="${r.from}" data-to="${r.to}" data-date="${r.date}" data-key="${r.key}">View flights</button>
+            <button class="btn danger small delBtn" data-del="${r.key}">Delete</button>
+          </div>
+        </div>
+        <div class="flights" id="fl_${id}" style="display:none;">
+          <div class="flightsList"></div>
+          <div class="saveRow">
+            <button class="btn success small saveFlightsBtn" data-key="${r.key}">Save selected flights</button>
+            <span class="muted small" id="save_${id}"></span>
+          </div>
+        </div>
+      `;
+      list.appendChild(card);
+    });
+
+    // delete
+    document.querySelectorAll('.delBtn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const key = btn.getAttribute('data-del');
+        if(!confirm(`Delete ${key}?`)) return;
+        const res = await fetch(`/api/routes?key=${encodeURIComponent(key)}`, { method: "DELETE" });
+        const js  = await res.json();
+        if(js.ok){ showToast("Route deleted"); loadRoutes(); } else { alert("Delete failed"); }
+      });
+    });
+
+    // view flights
+    document.querySelectorAll('.viewBtn').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const from = btn.getAttribute('data-from');
+        const to   = btn.getAttribute('data-to');
+        const date = btn.getAttribute('data-date');
+        const key  = btn.getAttribute('data-key');
+        const id   = keyToId(key);
+
+        const container = document.getElementById(`fl_${id}`);
+        const listDiv  = container.querySelector(".flightsList");
+        container.style.display = container.style.display === "none" ? "block" : "none";
+        if(container.style.display === "none") return;
+
+        listDiv.innerHTML = `<div class="muted small">Loading flights…</div>`;
+
+        const r = await fetch("/api/routes");
+        const all = await r.json();
+        const prechecked = (all.routes.find(x=>x.key===key)?.flight_filters || []).map(f=>f.flightNo);
+
+        try{
+          const res = await fetch(`/api/search?from=${from}&to=${to}&date=${date}`);
+          const js = await res.json();
+          let fl = js.flights || [];
+
+          fl = fl.filter(f => (f.airline||"").toLowerCase() !== "vistara");
+
+          listDiv.innerHTML = "";
+          if(!fl.length){
+            listDiv.innerHTML = `<div class="muted">No flights found.</div>`;
+            return;
+          }
+// Re-reads routes to get the saved flight filters for this key → used to pre-check boxes.
+          fl.slice(0,20).forEach(f=>{
+            const air = f.airline || "—";
+            const fn  = f.flightNo || "";
+            const tt  = (f.depart && f.arrive) ? `${f.depart.replace('T',' ')} → ${f.arrive.replace('T',' ')}` : "";
+            const dur = f.duration || "";
+            const cid = `chk_${id}_${fn || air}`;
+
+// Each row shows airline, flight no., timings, duration, price, and a checkbox to select for alerts.
+            const row = document.createElement("div");
+            row.className = "flightRow";
+            row.innerHTML = `
+              <div class="flightLeft">
+                <div><b>${air}</b> ${fn?(`<span class="chip">${fn}</span>`):""}</div>
+                <div class="muted small">${tt}${dur?(" • "+dur):""}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div class="price">${rupee(f.price)}</div>
+                <label class="small muted" for="${cid}">Alert</label>
+                <input type="checkbox" id="${cid}" data-flightno="${fn}" data-airline="${air}" ${prechecked.includes(fn) ? "checked":""}>
+              </div>
+            `;
+            listDiv.appendChild(row);
+          });
+
+          const saveBtn = container.querySelector(".saveFlightsBtn");
+          const saveMsg = document.getElementById(`save_${id}`);
+          saveBtn.onclick = async ()=>{
+            const chosen = [...container.querySelectorAll('input[type="checkbox"][id^="chk_"]')]
+              .filter(c=>c.checked)
+              .map(c=>({flightNo: c.getAttribute("data-flightno"), airline: c.getAttribute("data-airline")}));
+            saveMsg.textContent = "Saving…";
+            const resp = await fetch("/api/flight-filters", {
+              method: "POST",
+              headers: {"Content-Type":"application/json"},
+              body: JSON.stringify({ key, flights: chosen })
+            });
+            const js2 = await resp.json();
+            saveMsg.textContent = js2.ok ? `Saved ${chosen.length} flight(s).` : "Save failed.";
+            if(js2.ok) showToast("Flight alerts updated");
+            loadRoutes();
+          };
+
+        }catch(e){
+          listDiv.innerHTML = `<div class="muted">Error fetching flights.</div>`;
+        }
+      });
+    });
+  }
+// Reads the form, posts JSON; clears fields and reloads list.
+  async function addRoute(){
+    msgEl.textContent = "Adding…";
+    const from = document.getElementById("from").value.trim().toUpperCase();
+    const to   = document.getElementById("to").value.trim().toUpperCase();
+    const date = document.getElementById("date").value.trim();
+    const res  = await fetch("/api/routes", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({from,to,date})
+    });
+    const js = await res.json();
+    msgEl.textContent = js.ok ? "" : (js.error || "Failed.");
+    if(js.ok){
+      showToast("Route added");
+      document.getElementById("from").value="";
+      document.getElementById("to").value="";
+      document.getElementById("date").value="";
+      loadRoutes();
+    }
+  }
+  // Gathers route checkbox states across all cards and posts them.
+  async function saveRouteSubs(){
+    const keys = [...document.querySelectorAll('input[type="checkbox"][data-key]')]
+      .filter(b=>b.checked)
+      .map(b=>b.dataset.key);
+    statusEl.textContent = "Saving…";
+    const r = await fetch("/api/subscriptions", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({keys})
+    });
+    const js = await r.json();
+    statusEl.textContent = js.ok ? `Saved route subscriptions.` : "Save failed.";
+    if(js.ok) showToast("Route subscriptions saved");
+  }
+
+  function setAll(val){
+    document.querySelectorAll('input[type="checkbox"][data-key]').forEach(cb=>cb.checked = val);
+  }
+
+  // ACTIVE VIEW
+  async function loadActive(){
+    const status = document.getElementById("active-status");
+    const wrap   = document.getElementById("active-list");
+    status.textContent = "Loading…";
+    wrap.innerHTML = "";
+    try{
+      const r = await fetch("/api/active");
+      const js = await r.json();
+      status.textContent = "Updated " + js.updated_at.replace("T"," ");
+      const list = js.active || [];
+      if(!list.length){
+        wrap.innerHTML = `<div class="muted" style="padding:12px">No active subscriptions yet. Select routes/flights in the Routes tab and save.</div>`;
+        return;
+      }
+      list.forEach(it=>{
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <div><b>${it.from} → ${it.to}</b> • ${it.date}</div>
+          <div class="muted small">Route last seen: <b>${rupee(it.last_price)}</b></div>
+        `;
+        if((it.flights||[]).length){
+          const sub = document.createElement("div");
+          sub.className = "sub";
+          it.flights.forEach(f=>{
+            const r = document.createElement("div");
+            r.className = "muted small";
+            r.innerHTML = `Flight <b>${f.flightNo}</b> ${f.airline?("("+f.airline+")"):""} — last seen <b>${rupee(f.last_price)}</b>`;
+            sub.appendChild(r);
+          });
+          div.appendChild(sub);
+        }
+        wrap.appendChild(div);
+      });
+    }catch(e){
+      status.textContent = "Failed to load.";
+      wrap.innerHTML = `<div class="muted" style="padding:12px">Error loading active tracker.</div>`;
+    }
+  }
+
+  // wire up
+  document.getElementById("addBtn").addEventListener("click", addRoute);
+  document.getElementById("saveBtn").addEventListener("click", saveRouteSubs);
+  document.getElementById("selectAll").addEventListener("click", ()=>setAll(true));
+  document.getElementById("clearAll").addEventListener("click", ()=>setAll(false));
+
+  // initial
+  loadRoutes();
+  setInterval(()=>{
+    if (document.getElementById("view-active").style.display !== "none") loadActive();
+    else loadRoutes();
+  }, 60000);
+</script>
+</body>
+</html>

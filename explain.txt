@@ -1,0 +1,6 @@
+currently the price isn't fluctuating , so I am changing flight previous price in JSON file ...
+so that our system seems flight price is flluctuating and hence it will send the Notification on Telegram
+
+also , my system will only send the notification only if the fluctuation is of more than of 1%.
+
+CHECK_INTERVAL=15 ... it will recheck the price of flight after every 15sec

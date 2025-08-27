@@ -1,0 +1,20 @@
+{
+  "DEL-GOA-2025-08-25#SG788": {
+    "last_price": 4203,
+    "last_notified_price": 3975,
+    "last_notified_dir": "drop",
+    "last_depart": "2025-08-25T16:00"
+  },
+  "GOA-DEL-2025-08-30#6E395": {
+    "last_price": 3234,
+    "last_notified_price": 3343,
+    "last_notified_dir": "drop",
+    "last_depart": "2025-08-30T06:30"
+  },
+  "BLR-BOM-2025-08-29#AI863": {
+    "last_price": 5745,
+    "last_notified_price": null,
+    "last_notified_dir": null,
+    "last_depart": "2025-08-29T08:30"
+  }
+}
