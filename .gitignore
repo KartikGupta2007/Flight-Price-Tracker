@@ -1,0 +1,7 @@
+__pycache__/
+explain.txt
+prices.json
+routes.json
+subscriptions.json
+.DS_Store
+.env
